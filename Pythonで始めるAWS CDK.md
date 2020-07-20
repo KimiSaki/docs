@@ -1,3 +1,5 @@
+# WIP
+
 # Pythonで始めるAWS CDK
 
 AWS CDK＋Pythonの記事が少なかったので書いてみた。
@@ -35,6 +37,4 @@ LambdaをPythonで書いていたから
 ### Lambda
 
 https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_lambda/Function.html
-
-
 
