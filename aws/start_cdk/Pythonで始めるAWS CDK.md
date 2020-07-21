@@ -1,21 +1,22 @@
-# WIP
-
 # Pythonで始めるAWS CDK
 
-AWS CDK＋Pythonの記事が少なかったので書いてみた。
+最近までいろいろと触る機会があったのと、AWS CDK＋Pythonの記事が少なかったので書いてみた。
+内容はAWS CDKのインストール〜デプロイまで。ついでにLambda関係でよく使いそうなところをいくつか。
 
-## 使ってみた感想
+## 実行環境
 
-* 土台のところでCloudFormationを使用しているので、CloudFormationの制限事項に引っかからないように注意
-* 使い込んでいくと正直、現状では痒いところに手が届かない感が否めない
+* AWS CDK 1.52.0
+* Node.js v12.18.2
+* Python 3.7.4
+* OSX Catalina 10.15.5
 
 ## はじめに
 
 ### AWS CDKってなに？
 
-> AWS クラウド開発キット (AWS CDK) は、使い慣れたプログラミング言語を使用してクラウドアプリケーションリソースをモデル化およびプロビジョニングするためのオープンソースのソフトウェア開発フレームワークです。
-
 [AWS クラウド開発キット](https://aws.amazon.com/jp/cdk/)より
+
+> AWS クラウド開発キット (AWS CDK) は、使い慣れたプログラミング言語を使用してクラウドアプリケーションリソースをモデル化およびプロビジョニングするためのオープンソースのソフトウェア開発フレームワークです。
 
 かなり大雑把にまとめると、使い慣れたプログラミング言語でAWSのリソースを定義、作成できるIaC(Infrastructure as Code)ツールですよっと。
 
@@ -25,8 +26,14 @@ AWS CDK＋Pythonの記事が少なかったので書いてみた。
 
 ### なんでPythonなの？
 
-(TypeScript分からないから…)
+(TypeScriptやったことないから…)
 LambdaをPythonで書いていたからその延長線上でPythonでやってみた
+
+### 使ってみた感想
+
+* 後述するが間接的にCloudFormationを使用しているので、実務で使用する場合は[AWS CloudFormation の制限](https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html)は一読しておくことをお勧めする。
+* リリースは頻繁にされているので日々改善されているようだが、使い込んでいくと正直、現状では痒いところに手が届かない感が否めない。少なくともクロススタック参照はなんとかして欲しい。
+* 調べて出てくるのはTypeScriptがほとんどなので、わざわざPythonを使うメリットはそこまでない
 
 ## AWS CDKのインストール
 
@@ -35,7 +42,14 @@ LambdaをPythonで書いていたからその延長線上でPythonでやって�
 ### Node.jsのインストール
 
 前提として、Node.jsが必要なのでインストールされていない場合はまずこちらをインストールする
-[Node.jsの公式](https://nodejs.org/en/download/)からインストーラをダウンロード。あとはインストーラに従ってポチポチしていけば勝手にインストールしてくれる。
+なぜNode.jsが必要かというと、AWS CDK自体はTypeScriptで書かれており、Pythonなど他の言語はjsiiというライブラリで自動的にTypeScriptに変換してくれているらしい。すごい。
+
+[AWS クラウド開発キットのよくある質問](https://aws.amazon.com/jp/cdk/faqs/)
+
+> Q: AWS CDK を使用するために JavaScript ランタイムをインストールする必要があるのはなぜですか?
+AWS は、AWS Construct ライブラリパッケージのビジネスロジックを TypeScript で構築し、サポートされている各プログラミング言語へのマッピングを提供します。これにより、AWS CDK コンストラクトの動作が異なる言語間で一貫していることを確認でき、すべての言語で利用できる包括的なコンストラクトパッケージのセットを提供できます。AWS CDK プロジェクトで作成したコードはすべてお客様ご希望のプログラミング言語でネイティブになっています。JavaScript ランタイムはお客様のプログラミング経験の実施詳細です。jsii プロジェクトは https://github.com/aws/jsii で参照できます。
+
+Node.jsのインストール自体は簡単で、[Node.jsの公式](https://nodejs.org/en/download/)からインストーラをダウンロード。あとはインストーラに従ってポチポチしていけば勝手にインストールしてくれる。
 
 インストールが完了したらバージョンを確認
 
@@ -48,11 +62,7 @@ $ npm -v
 
 ### AWS認証情報の設定
 
-> You must provide your credentials and an AWS Region to use AWS CDK, if you have not already done so.
-
-認証情報とAWSリージョンを提供しなさいよ、っと言われているようです。
-
-AWS CLIをインストールしている人は`aws configure` コマンドを実行すればプロンプトで設定可能ですが、わざわざAWS CLIインストールしたくない場合は手動で設定する。
+AWS CLIがインストールされている場合は`aws configure` コマンドを実行すればプロンプトで設定可能だが、わざわざAWS CLIインストールしたくない場合は手動で設定する。
 
 以下はmac or linuxの設定手順。Windowsの場合は`%USERPROFILE%\.aws\config` と `%USERPROFILE%\.aws\credentials`を作成し、認証情報、リージョンを設定する
 
@@ -92,9 +102,26 @@ $ cdk --version
 1.52.0 (build 5263664)
 ```
 
+デプロイ用S3バケットの作成
+
+`cdk bootstrap`コマンドでCloudFormationで使用するS3バケットを作成する
+これはリージョンごとに実施する必要があるので注意。
+
+```
+$ cdk bootstrap
+ ⏳  Bootstrapping environment aws://323617333195/ap-northeast-1...
+CDKToolkit: creating CloudFormation changeset...
+
+
+
+ ✅  Environment aws://323617333195/ap-northeast-1 bootstrapped.
+```
+
+
 ## CDK appを作る
 
 * [Your first AWS CDK app](https://docs.aws.amazon.com/cdk/latest/guide/hello_world.html)を参考に進めていく。
+* 参考までに、今回作成したコードは[ここ](https://github.com/KimiSaki/hello-cdk)に置いてあります。
 
 プロジェクトディレクトリを作成
 
@@ -119,7 +146,7 @@ pip install -r requirements.txt
 
 pipenvを使用したい場合は、virtualenvを起動せずに`.env`ディレクトリを削除して代わりにpipenvを起動する
 
-### S3バケットを作成する
+### S3バケットを作成してみる
 
 ```sh
 pip install aws-cdk.aws-s3
@@ -145,7 +172,7 @@ class HelloCdkStack(core.Stack):
 デプロイコマンドを実行
 
 ```
-kimidzuokinoMBP:hello-cdk kimizukasaki$ cdk deploy
+$ cdk deploy
 hello-cdk: deploying...
 hello-cdk: creating CloudFormation changeset...
 
@@ -163,13 +190,186 @@ arn:aws:cloudformation:ap-northeast-1:323617333195:stack/hello-cdk/3497b790-ca3f
 
 ![](2020-07-20-13-31-33.png)
 
-## サンプルコード
+AWSマネジメントコンソールでCloudFormationを開くと`hello-cdk`というスタックができている。
+
+![](2020-07-20-14-43-44.png)
+
+これはAWS CDKがリソースを作成するのにCloudFormationを使用しているため。
+`cdk synth`コマンドを実行すればCloudFormationテンプレートを出力することもできる。
+
+```sh
+$ cdk synth
+```
+
+また、作成したリソースを全て削除したい場合は`cdk destroy`コマンドでスタック単位でリソースを削除することが可能。
+ただし、S3バケットなど削除されないリソースが一部あるので注意が必要。
+
+```sh
+$ cdk destroy
+```
+
+### Lambdaをデプロイしてみる
+
+* 参考までに、今回作成したコードは[ここ](https://github.com/KimiSaki/cdk-lambda)に置いてあります。
+
+#### シンプルなLambda関数をデプロイする
+
+新しいプロジェクトを作成。
+
+```sh
+$ mkdir cdk-lambda
+$ cd cdk-lambda/
+$ cdk init app --language python
+```
+
+せっかくなのでPipenvを使ってみる。
+
+```sh
+$ rm -rf .env
+$ rm -rf source.bat
+$ rm -rf requirements.txt
+$ pipenv shell
+```
+
+必要なパッケージをインストール
+
+```sh
+$ pipenv install aws_cdk.core
+$ pipenv install aws_cdk.aws_lambda
+```
+
+Lambda関数を置くディレクトリを作成し、Lambda関数のPythonファイルを作成
+
+```sh
+$ mkdir function
+$ touch function/index.py
+```
+
+今回はあくまでもサンプルなので、Lambdaのコードは適当
+
+```py
+import json
+
+print('Loading function')
 
 
+def lambda_handler(event, context):
+    print("value1 = " + event['key1'])
+    print("value2 = " + event['key2'])
+    print("value3 = " + event['key3'])
+    return event['key1']  # Echo back the first key value
+```
 
-### VPC
+`cdk_lambda_stack.py`にLambda関数を作成するコードを追記
 
-### Lambda
+```py
+from aws_cdk import core
+from aws_cdk import aws_lambda as _lambda
 
-https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_lambda/Function.html
 
+class CdkLambdaStack(core.Stack):
+
+    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+        super().__init__(scope, id, **kwargs)
+
+        # The code that defines your stack goes here
+        lambdaFn = _lambda.Function(self, "SampleLambdaFunction", 
+            code=_lambda.Code.from_asset('function/'),
+            runtime=_lambda.Runtime.PYTHON_3_7,
+            handler="index.lambda_handler",
+            function_name="sample_lambda_function"
+        )
+```
+
+いざ、デプロイ！
+
+```sh
+$ cdk deploy
+```
+
+AWSマネジメントコンソールでデプロイされていることを確認。
+
+![](2020-07-20-17-50-07.png)
+
+
+#### Lambda関数に環境変数を設定する
+
+Functionを作成する際に`environment`パラメータを指定するか、`add_environment`メソッドで設定する
+
+```py
+        # 環境変数を追加
+        lambdaFn.add_environment(key="STAGE", value="DEV")
+```
+
+![](2020-07-20-18-15-19.png)
+
+
+#### s3トリガーを設定する
+
+必要なライブラリをインストール
+
+```sh
+$ pipenv install aws_cdk.aws_s3
+$ pipenv install aws_cdk.aws_s3_notifications
+```
+
+ライブラリをインポート
+
+```py
+from aws_cdk import (
+    core,
+    aws_lambda as _lambda,
+    aws_s3 as _s3,
+    aws_s3_notifications,
+)
+```
+
+s3バケットを作成し、通知イベントを設定。
+今のところ、この方法では既存のS3バケットには設定できない。既存のS3バケットにイベントを設定したい場合はカスタムリソースを使用する。
+
+```py
+        bucket = _s3.Bucket(self, "SampleBucket", bucket_name="kimi-first-cdk-bucket")
+        notification = aws_s3_notifications.LambdaDestination(lambdaFn)
+        bucket.add_event_notification(_s3.EventType.OBJECT_CREATED, notification, _s3.NotificationKeyFilter(prefix="hoge", suffix=".csv"))
+```
+
+![](2020-07-20-19-07-57.png)
+
+#### Cloudwatch Eventsから定期的に起動する
+
+必要なライブラリをインストール
+
+```sh
+$ pipenv install aws_cdk.aws_events
+$ pipenv install aws_cdk.aws_events_targets
+```
+
+インストールしたライブラリをインポート
+
+```py
+from aws_cdk import (
+    core,
+    aws_lambda as _lambda,
+    aws_events as _events,
+    aws_events_targets as _targets
+)
+```
+
+イベントルールを作成するコードを追加。
+今回スケジュール文字列を使用して設定しているが、`Schedule.cron`や`Schedule.rate`など別の方法でも指定可能。
+
+```py
+        rule = _events.Rule(self, "SampleEventRule",
+            rule_name="schedule_trigger_event",
+            schedule=_events.Schedule.expression("cron(10 * * * ? *)")
+        )
+        rule.add_target(_targets.LambdaFunction(lambdaFn))
+```
+
+![](2020-07-21-11-18-19.png)
+
+## 参考
+
+* [AWS CDK Pythonリファレンス](https://docs.aws.amazon.com/cdk/api/latest/python/index.html)
+
+* [AWS CDK Examples](https://github.com/aws-samples/aws-cdk-examples) サンプルコード集。言語によって差はあるが、いろいろ揃っているのでかなりありがたい
