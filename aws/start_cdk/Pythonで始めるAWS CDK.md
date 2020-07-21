@@ -1,14 +1,14 @@
 # Pythonで始めるAWS CDK
 
-AWS CDK＋Pythonの記事が少なかったので書いてみた。
-内容はAWS CDKのインストール〜デプロイまで
+最近までいろいろと触る機会があったのと、AWS CDK＋Pythonの記事が少なかったので書いてみた。
+内容はAWS CDKのインストール〜デプロイまで。ついでにLambda関係でよく使いそうなところをいくつか。
 
 ## 実行環境
 
-* OSX Catalina 10.15.5
+* AWS CDK 1.52.0
 * Node.js v12.18.2
-* aws cdk 1.52.0
 * Python 3.7.4
+* OSX Catalina 10.15.5
 
 ## はじめに
 
@@ -26,13 +26,14 @@ AWS CDK＋Pythonの記事が少なかったので書いてみた。
 
 ### なんでPythonなの？
 
-(TypeScript分からないから…)
+(TypeScriptやったことないから…)
 LambdaをPythonで書いていたからその延長線上でPythonでやってみた
 
 ### 使ってみた感想
 
 * 後述するが間接的にCloudFormationを使用しているので、実務で使用する場合は[AWS CloudFormation の制限](https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html)は一読しておくことをお勧めする。
 * リリースは頻繁にされているので日々改善されているようだが、使い込んでいくと正直、現状では痒いところに手が届かない感が否めない。少なくともクロススタック参照はなんとかして欲しい。
+* 調べて出てくるのはTypeScriptがほとんどなので、わざわざPythonを使うメリットはそこまでない
 
 ## AWS CDKのインストール
 
@@ -120,6 +121,7 @@ CDKToolkit: creating CloudFormation changeset...
 ## CDK appを作る
 
 * [Your first AWS CDK app](https://docs.aws.amazon.com/cdk/latest/guide/hello_world.html)を参考に進めていく。
+* 参考までに、今回作成したコードは[ここ](https://github.com/KimiSaki/hello-cdk)に置いてあります。
 
 プロジェクトディレクトリを作成
 
@@ -207,6 +209,8 @@ $ cdk destroy
 ```
 
 ### Lambdaをデプロイしてみる
+
+* 参考までに、今回作成したコードは[ここ](https://github.com/KimiSaki/cdk-lambda)に置いてあります。
 
 #### シンプルなLambda関数をデプロイする
 
@@ -302,11 +306,22 @@ Functionを作成する際に`environment`パラメータを指定するか、`a
 
 #### s3トリガーを設定する
 
-必要なパッケージをインストール
+必要なライブラリをインストール
 
 ```sh
 $ pipenv install aws_cdk.aws_s3
 $ pipenv install aws_cdk.aws_s3_notifications
+```
+
+ライブラリをインポート
+
+```py
+from aws_cdk import (
+    core,
+    aws_lambda as _lambda,
+    aws_s3 as _s3,
+    aws_s3_notifications,
+)
 ```
 
 s3バケットを作成し、通知イベントを設定。
@@ -320,10 +335,41 @@ s3バケットを作成し、通知イベントを設定。
 
 ![](2020-07-20-19-07-57.png)
 
+#### Cloudwatch Eventsから定期的に起動する
 
+必要なライブラリをインストール
+
+```sh
+$ pipenv install aws_cdk.aws_events
+$ pipenv install aws_cdk.aws_events_targets
+```
+
+インストールしたライブラリをインポート
+
+```py
+from aws_cdk import (
+    core,
+    aws_lambda as _lambda,
+    aws_events as _events,
+    aws_events_targets as _targets
+)
+```
+
+イベントルールを作成するコードを追加。
+今回スケジュール文字列を使用して設定しているが、`Schedule.cron`や`Schedule.rate`など別の方法でも指定可能。
+
+```py
+        rule = _events.Rule(self, "SampleEventRule",
+            rule_name="schedule_trigger_event",
+            schedule=_events.Schedule.expression("cron(10 * * * ? *)")
+        )
+        rule.add_target(_targets.LambdaFunction(lambdaFn))
+```
+
+![](2020-07-21-11-18-19.png)
 
 ## 参考
 
-* [AWS CDK Examples](https://github.com/aws-samples/aws-cdk-examples) サンプルコード集。言語によって差はあるが、いろいろ揃っているのでかなりありがたい
-
 * [AWS CDK Pythonリファレンス](https://docs.aws.amazon.com/cdk/api/latest/python/index.html)
+
+* [AWS CDK Examples](https://github.com/aws-samples/aws-cdk-examples) サンプルコード集。言語によって差はあるが、いろいろ揃っているのでかなりありがたい
