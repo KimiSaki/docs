@@ -1,0 +1,14 @@
+import boto3
+import os
+
+def lambda_handler(event, context):
+
+    SRC_LANG = 'en'
+    TRG_LANG = 'ja'
+
+  
+    translate = boto3.client('translate')
+
+    response = translate.translate_text(Text=event["text"], SourceLanguageCode=SRC_LANG, TargetLanguageCode=TRG_LANG)
+
+    return (response['TranslatedText'])
